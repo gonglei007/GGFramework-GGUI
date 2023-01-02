@@ -2,37 +2,42 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 等待UI
-/// </summary>
-public class UIWaiting : UIBase
+namespace GGFramework.GGUI
 {
-    public GameObject view = null;
-    public float delay = 2.0f;
-
-    private float timer = 0.0f;
-    private bool showing = false;
-
-    public override void Show()
+    /// <summary>
+    /// 等待UI
+    /// </summary>
+    public class UIWaiting : UIBase
     {
-        this.gameObject.SetActive(true);
-        view.SetActive(false);
-        showing = true;
-    }
+        public GameObject view = null;
+        public float delay = 2.0f;
 
-    public override void Hide()
-    {
-        this.gameObject.SetActive(false);
-    }
+        private float timer = 0.0f;
+        private bool showing = false;
 
-    private void Update()
-    {
-        if (showing) {
-            timer += Time.deltaTime;
-            if (timer >= delay) {
-                view.SetActive(true);
-                showing = false;
-                timer = 0;
+        public override void Show()
+        {
+            this.gameObject.SetActive(true);
+            view.SetActive(false);
+            showing = true;
+        }
+
+        public override void Hide()
+        {
+            this.gameObject.SetActive(false);
+        }
+
+        private void Update()
+        {
+            if (showing)
+            {
+                timer += Time.deltaTime;
+                if (timer >= delay)
+                {
+                    view.SetActive(true);
+                    showing = false;
+                    timer = 0;
+                }
             }
         }
     }
