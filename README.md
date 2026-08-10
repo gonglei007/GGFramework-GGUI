@@ -13,6 +13,27 @@
 
 GGUI 是一个面向游戏客户端的 UI 框架，**基于 NGUI** 构建。它提供分层的 UI 管理、栈式页面导航、通用窗口/对话框/加载组件，以及丰富的控件扩展库，帮助团队快速、稳定地搭建游戏界面层，并可与 GGResource（资源）、GGNetwork（网络）等 GG 框架模块组合使用。
 
+### 架构示意
+
+```mermaid
+flowchart TB
+    subgraph UIRoot
+        L1[Page 层<br/>全屏页面栈 Present / Dismiss]
+        L2[Window 层<br/>弹出窗口, 支持附属/全局]
+        L3[Loading 层<br/>加载页 + 进度 + 特效]
+        L4[Dialog 层<br/>模态对话框 Yes/No/Cancel]
+        L5[Waiting 层<br/>等待遮罩]
+        L6[FX / Message 层]
+    end
+    UISystem[UISystem 单例<br/>分层管理 + 页面栈 + 生命周期] --> UIRoot
+    UISystem --> Anim[UITweenerFactory<br/>NGUI Tween 动画]
+    UISystem --> Text[TextAdaptor<br/>本地化适配]
+    UIBase[UIBase 基类<br/>OnLoad/OnPreShow/OnShowed/OnPreHide] --> UISystem
+    UIPage & UIWindow & UIDialog & UILoading & UIWaiting --> UIBase
+```
+
+> **8 层 UI**：Page / Window / UIFX / Loading / Dialog / Message / Waiting，每层有独立排序深度；`UIBase` 统一生命周期，`ResourceSystem` 异步加载页面 Prefab。
+
 ## 功能与特性
 
 **分层 UI 管理**
@@ -85,8 +106,7 @@ GGUI 是一个面向游戏客户端的 UI 框架，**基于 NGUI** 构建。它�
 ## 文档
 
 * [如何快速接入?](/documents/quickstart.md)
-* 技术手册(TODO)
-* 参考文档(TODO)
+* [技术手册](/documents/manual.md)
 
 ## 进群沟通
 
