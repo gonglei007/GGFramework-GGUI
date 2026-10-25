@@ -31,14 +31,16 @@ public class InputChild : MonoBehaviour
 
 	public void OnEnable ()
 	{
-		//   if(controller)
-		controller.Add (this);
+		if (controller != null) {
+			controller.Add (this);
+		}
 	}
 
 	public void OnDisable ()
 	{
-		// if (controller)
-		controller.Remove (this);
+		if (controller != null) {
+			controller.Remove (this);
+		}
 		if (UICamera.selectedObject == gameObject) {
 			UICamera.selectedObject = null;
 		}

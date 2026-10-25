@@ -24,6 +24,8 @@ namespace GGFramework.GGUI
 
         public override void Hide()
         {
+            showing = false;
+            timer = 0.0f;
             this.gameObject.SetActive(false);
         }
 

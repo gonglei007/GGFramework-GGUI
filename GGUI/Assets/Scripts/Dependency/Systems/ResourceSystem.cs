@@ -212,7 +212,7 @@ public class ResourceSystem : Singleton<ResourceSystem>
         List<string> assetList = assetsInBundle[bundleName];
         foreach (string asset in assetList) {
             ResourceObject resourceObject = GetObject(tag, asset);
-            if (resourceObject != null && resourceObject.assetObject != null && resourceObject.assetObject.GetType() is T) {
+            if (resourceObject != null && resourceObject.assetObject != null && resourceObject.assetObject is T) {
                 assetListByType.Add(resourceObject);
             }
         }

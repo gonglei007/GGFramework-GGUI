@@ -60,11 +60,11 @@ public class UIShake : MonoBehaviour
 
 	public void StopShake ()
 	{
-        startShake = false;
-        if (startShake != false) {
+        if (startShake) {
 			DestroyImmediate (this.GetComponent<TweenRotation> ());
 			//this.transform.localRotation = Quaternion.Euler(Vector3.zero);
 		}
+        startShake = false;
 		this.transform.localRotation = mStartRotation;
 	}
 

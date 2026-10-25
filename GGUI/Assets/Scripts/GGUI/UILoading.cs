@@ -80,7 +80,7 @@ namespace GGFramework.GGUI
                 {
                     if (hintCount > 0)
                     {
-                        int hintIndex = UnityEngine.Random.Range(1, hintCount);
+                        int hintIndex = UnityEngine.Random.Range(1, hintCount + 1);
                         string strHint = UISystem.Instance.TextAdaptor.GetText("hint_text_" + hintIndex.ToString());
                         labelTips.text = strHint == null ? "" : strHint;
                     }

@@ -176,7 +176,7 @@ public class UIAnimation : MonoBehaviour
 		if (closeAnimationType != CloseAnimationType.None) {
 			closeScript = gameObject.GetComponent<UIClose> ();
 			if (closeScript != null) {
-				closeScript.willStartCallBack += HanleWindowWillClose;
+				closeScript.willStartCallBack -= HanleWindowWillClose;
 			}
 		}
 	}
@@ -311,7 +311,7 @@ public class UIAnimation : MonoBehaviour
 			return;
 		}
 		CloseEndCallback ();
-		if (!(fadeOutWorking || fadeOutWorking)) {
+		if (!(fadeOutWorking || flyOutWorking)) {
 			NGUITools.SetActive (gameObject, false);
 		}
 		MarkScaleOutWork (false);

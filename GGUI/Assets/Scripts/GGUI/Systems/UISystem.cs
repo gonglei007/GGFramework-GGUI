@@ -77,7 +77,7 @@ namespace GGFramework.GGUI
         private void Awake()
         {
             GameObject root = new GameObject();
-            root.AddComponent<UIBase>();
+            mRoot = root.AddComponent<UIBase>();
             root.name = "uiRoot";
 
             for (int i = (int)UILayer.Root; i < (int)UILayer.Count; ++i)
@@ -89,6 +89,15 @@ namespace GGFramework.GGUI
             uiTweenerFactory.Init(uiAnimationRoot);
             ResourceSystem.Instance.onResourceLoaded += OnUIResourceLoaded;
             //TODO: GL - 构建存储UI对象的分组GameObject
+        }
+
+        private void OnDestroy()
+        {
+            // 取消资源加载事件订阅，避免单例销毁后残留悬挂引用（编辑器 Play Mode 切换尤甚）。
+            if (ResourceSystem.Instance != null)
+            {
+                ResourceSystem.Instance.onResourceLoaded -= OnUIResourceLoaded;
+            }
         }
 
         // Start is called before the first frame update
@@ -105,11 +114,11 @@ namespace GGFramework.GGUI
 
         void OnUIResourceLoaded(ResourceItem resourceItem)
         {
-            Debug.LogWarning("--->资源加载完成:" + resourceItem.name + "|" + resourceItem.path);
             if (resourceItem == null)
             {
                 return;
             }
+            Debug.LogWarning("--->资源加载完成:" + resourceItem.name + "|" + resourceItem.path);
             if (!uiActionTable.ContainsKey(resourceItem.name))
             {
                 return;
@@ -397,7 +406,7 @@ namespace GGFramework.GGUI
                     {
                         callback(uiBase as UIPage, true);
                     }
-                    //return uiBase as UIPage;
+                    return;
                 }
                 //ResourceObject resObject = ResourceSystem.Instance.GetObject(ResourceSystem.Tag.UI, name);
                 ResourceSystem.Instance.ListenObject(name, (ResourceObject resObject) => {
@@ -448,7 +457,7 @@ namespace GGFramework.GGUI
                     {
                         callback(uiBase as UIWindow, true);
                     }
-                    //return uiBase as UIWindow;
+                    return;
                 }
                 //ResourceObject resObject = ResourceSystem.Instance.GetObject(ResourceSystem.Tag.UI, name);
                 ResourceSystem.Instance.ListenObject(name, (ResourceObject resObject) =>
@@ -541,7 +550,7 @@ namespace GGFramework.GGUI
             {
                 // 如果当前对话框的父是此Page，则隐藏对话框。
                 //TODO: GL - 如果对话框是必须要响应的，则要阻止页面弹出。对话框也要做一下遮挡。
-                if (mDialog.Parent == page)
+                if (mDialog != null && mDialog.Parent == page)
                 {
                     if (mDialog.IsShowing())
                     {
@@ -692,7 +701,9 @@ namespace GGFramework.GGUI
 
         public void HideAllWindows()
         {
-            foreach (string key in mWindows.Keys)
+            // 先复制键集合，避免遍历 Dictionary 时 HideWindow 内部 Remove 导致 InvalidOperationException。
+            List<string> keys = new List<string>(mWindows.Keys);
+            foreach (string key in keys)
             {
                 HideWindow(key);
             }
@@ -818,10 +829,9 @@ namespace GGFramework.GGUI
             //    HideLoading();
             //}
             UILoading loading = GetUIBase(UILayer.Loading, name) as UILoading;
-            loading.SetTips(hint);
-
             if (loading != null)
             {
+                loading.SetTips(hint);
                 if (!loading.IsShowing())
                 {
                     loading.Show(fxName);

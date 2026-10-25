@@ -129,15 +129,15 @@ namespace GGFramework.GGUI
         void OnButtonClick(GameObject sender)
         {
             Option option = Option.None;
-            if (sender == yesButton.gameObject)
+            if (yesButton != null && sender == yesButton.gameObject)
             {
                 option = Option.Yes;
             }
-            if (sender == noButton.gameObject || sender == mask)
+            if ((noButton != null && sender == noButton.gameObject) || sender == mask)
             {
                 option = Option.No;
             }
-            if (sender == cancelButton.gameObject)
+            if (cancelButton != null && sender == cancelButton.gameObject)
             {
                 option = Option.Cancel;
             }
@@ -164,9 +164,18 @@ namespace GGFramework.GGUI
 
         void UpdateVisible()
         {
-            yesButton.gameObject.SetActive(IsOptionOn(Option.Yes));
-            noButton.gameObject.SetActive(IsOptionOn(Option.No));
-            cancelButton.gameObject.SetActive(IsOptionOn(Option.Cancel));
+            if (yesButton != null)
+            {
+                yesButton.gameObject.SetActive(IsOptionOn(Option.Yes));
+            }
+            if (noButton != null)
+            {
+                noButton.gameObject.SetActive(IsOptionOn(Option.No));
+            }
+            if (cancelButton != null)
+            {
+                cancelButton.gameObject.SetActive(IsOptionOn(Option.Cancel));
+            }
             SetButtonText(initYesButtonText, initNoButtonText);
             UpdateLayout();
         }

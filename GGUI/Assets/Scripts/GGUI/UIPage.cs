@@ -82,11 +82,8 @@ namespace GGFramework.GGUI
                 {
                     //播放UI动画
                     animationCtrl.Play(showAnimationName);
-                    // 以下:添加回调
-                    AnimationEvent animationEvent = new AnimationEvent();
-                    animationEvent.functionName = "ShowAnimFinish";
-                    animationEvent.time = clip.length;
-                    clip.AddEvent(animationEvent);
+                    // 以下:添加回调（先移除同名旧事件，避免多次 Show 后回调重复累积触发）
+                    AddAnimationEventOnce(clip, "ShowAnimFinish", clip.length);
                     //由于AnimationEvent不支持传Action类型的参数，所以将回调中转一下
                     onShowFinish = onFinished;
                 }
@@ -135,11 +132,8 @@ namespace GGFramework.GGUI
                 {
                     //播放UI动画
                     animationCtrl.Play(hideAnimationName);
-                    // 以下:添加回调
-                    AnimationEvent animationEvent = new AnimationEvent();
-                    animationEvent.functionName = "HideAnimFinish";
-                    animationEvent.time = clip.length;
-                    clip.AddEvent(animationEvent);
+                    // 以下:添加回调（先移除同名旧事件，避免多次 Hide 后回调重复累积触发）
+                    AddAnimationEventOnce(clip, "HideAnimFinish", clip.length);
                     //由于AnimationEvent不支持传Action类型的参数，所以将回调中转一下
                     onHideFinish = onFinished;
                 }
@@ -157,7 +151,33 @@ namespace GGFramework.GGUI
 
         private void HideAnimFinish()
         {
-            base.OnShowed(onHideFinish);
+            base.OnPreHide(onHideFinish);
+        }
+
+        /// <summary>
+        /// 向 AnimationClip 添加回调事件，并先移除同名旧事件，
+        /// 避免多次 Show/Hide 循环后同一 Clip 上事件重复累积导致回调被多次触发。
+        /// </summary>
+        private void AddAnimationEventOnce(AnimationClip targetClip, string functionName, float time)
+        {
+            if (targetClip == null)
+            {
+                return;
+            }
+            AnimationEvent[] existingEvents = targetClip.events;
+            List<AnimationEvent> retained = new List<AnimationEvent>();
+            for (int i = 0; i < existingEvents.Length; i++)
+            {
+                if (existingEvents[i].functionName != functionName)
+                {
+                    retained.Add(existingEvents[i]);
+                }
+            }
+            AnimationEvent newEvent = new AnimationEvent();
+            newEvent.functionName = functionName;
+            newEvent.time = time;
+            retained.Add(newEvent);
+            targetClip.events = retained.ToArray();
         }
     }
 }
