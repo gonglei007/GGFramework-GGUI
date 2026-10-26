@@ -1,19 +1,15 @@
-﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace GGFramework.GGUI
+namespace GGFramework.GGUI.NGUI
 {
-    public class UITweenerFactory
+    /// <summary>
+    /// NGUI 补间模板工厂。由核心层的 UITweenerFactory 下沉而来，
+    /// 负责缓存动画模板根对象下的 UITweener 组件，供 CreateTweener 复制使用。
+    /// </summary>
+    public class NGUITweenerFactory
     {
-        public enum UIAnimationType
-        {
-            None,
-            Pop,
-            SlideUp,
-        };
-
-        private Dictionary<string, UITweener[]> uiAnmationTables = new Dictionary<string, UITweener[]>();
+        private readonly Dictionary<string, UITweener[]> uiAnmationTables = new Dictionary<string, UITweener[]>();
 
         public void Init(GameObject root)
         {
@@ -34,7 +30,7 @@ namespace GGFramework.GGUI
 
         public UITweener[] GetUITweeners(string name)
         {
-            if (!uiAnmationTables.ContainsKey(name))
+            if (string.IsNullOrEmpty(name) || !uiAnmationTables.ContainsKey(name))
             {
                 return null;
             }

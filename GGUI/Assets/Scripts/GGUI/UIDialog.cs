@@ -7,7 +7,7 @@ using UnityEngine;
 namespace GGFramework.GGUI
 {
     /**
-     * 基于NGUI的对话框类。
+     * 对话框类。通过 UI 实现层（IUIImplementation）与具体引擎解耦。
      * 对话框上的部件要符合命名规则。
      */
     public class UIDialog : UIBase
@@ -21,14 +21,17 @@ namespace GGFramework.GGUI
         };
         int options = (int)Option.None;
 
-        public UILabel yesButtonLabel = null;
-        public UILabel noButtonLabel = null;
-        private UILabel titleLabel = null;
-        private UILabel messageLabel = null;
-        private UIButton yesButton = null;
-        private UIButton noButton = null;
-        private UIButton cancelButton = null;
-        private UIGrid buttonGrid = null;
+        // 按钮文本：由具体控件改为 GameObject 引用（可序列化、引擎无关），Awake 时经实现层包装。
+        public GameObject yesButtonLabel = null;
+        public GameObject noButtonLabel = null;
+        private IUIText titleLabel = null;
+        private IUIText messageLabel = null;
+        private IUIText yesButtonLabelText = null;
+        private IUIText noButtonLabelText = null;
+        private IUIButton yesButton = null;
+        private IUIButton noButton = null;
+        private IUIButton cancelButton = null;
+        private IUILayoutGroup buttonGrid = null;
         private GameObject mask;
 
         private float initCellWidth = 0.0f;
@@ -41,43 +44,46 @@ namespace GGFramework.GGUI
         protected override void Awake()
         {
             base.Awake();
-            ComponentUtil.BindComponent(ref titleLabel, "Content/ContainerTitle/Label", this.gameObject);
-            ComponentUtil.BindComponent(ref cancelButton, "Content/ContainerTitle/ButtonCancel", this.gameObject);
-            ComponentUtil.BindComponent(ref messageLabel, "Content/ContainerContent/Label", this.gameObject);
-            ComponentUtil.BindComponent(ref yesButton, "Content/ContainerButtons/ButtonYes", this.gameObject);
-            ComponentUtil.BindComponent(ref noButton, "Content/ContainerButtons/ButtonNo", this.gameObject);
-            ComponentUtil.BindComponent(ref buttonGrid, "Content/ContainerButtons", this.gameObject);
-            ComponentUtil.BindComponent(ref mask, "Mask", this.gameObject);
+            IUIImplementation impl = UISystem.Instance.Implementation;
+            titleLabel = impl.FindText(this.gameObject, "Content/ContainerTitle/Label");
+            cancelButton = impl.FindButton(this.gameObject, "Content/ContainerTitle/ButtonCancel");
+            messageLabel = impl.FindText(this.gameObject, "Content/ContainerContent/Label");
+            yesButton = impl.FindButton(this.gameObject, "Content/ContainerButtons/ButtonYes");
+            noButton = impl.FindButton(this.gameObject, "Content/ContainerButtons/ButtonNo");
+            buttonGrid = impl.FindLayoutGroup(this.gameObject, "Content/ContainerButtons");
+            mask = impl.FindGameObject(this.gameObject, "Mask");
+
+            yesButtonLabelText = impl.WrapText(yesButtonLabel);
+            noButtonLabelText = impl.WrapText(noButtonLabel);
 
             if (yesButton != null)
             {
-                UIEventListener.Get(yesButton.gameObject).onClick += OnButtonClick;
+                yesButton.AddClickListener(OnButtonClick);
             }
             if (noButton != null)
             {
-                UIEventListener.Get(noButton.gameObject).onClick += OnButtonClick;
+                noButton.AddClickListener(OnButtonClick);
             }
             if (cancelButton != null)
             {
-                UIEventListener.Get(cancelButton.gameObject).onClick += OnButtonClick;
+                cancelButton.AddClickListener(OnButtonClick);
             }
             if (mask != null)
             {
-                UIEventListener.Get(mask).onClick += OnButtonClick;
-                //EventDelegate.Add(mask.GetComponent<UIEventTrigger>().onClick, OnMaskClick);
+                impl.AddClickHandler(mask, OnButtonClick);
             }
 
             if (buttonGrid != null)
             {
                 initCellWidth = buttonGrid.cellWidth;
             }
-            if (yesButtonLabel != null)
+            if (yesButtonLabelText != null)
             {
-                initYesButtonText = yesButtonLabel.text;
+                initYesButtonText = yesButtonLabelText.text;
             }
-            if (noButtonLabel != null)
+            if (noButtonLabelText != null)
             {
-                initNoButtonText = noButtonLabel.text;
+                initNoButtonText = noButtonLabelText.text;
             }
         }
         // Start is called before the first frame update
@@ -101,8 +107,14 @@ namespace GGFramework.GGUI
             this.onCallback = onCallback;
             //this.onLuaCallback = null;
             UpdateVisible();
-            this.titleLabel.text = title;
-            this.messageLabel.text = message;
+            if (this.titleLabel != null)
+            {
+                this.titleLabel.text = title;
+            }
+            if (this.messageLabel != null)
+            {
+                this.messageLabel.text = message;
+            }
             base.Show();
         }
 
@@ -116,13 +128,13 @@ namespace GGFramework.GGUI
 
         public void SetButtonText(string yesButtonText, string noButtonText)
         {
-            if (yesButtonLabel != null)
+            if (yesButtonLabelText != null)
             {
-                yesButtonLabel.text = yesButtonText;
+                yesButtonLabelText.text = yesButtonText;
             }
-            if (noButtonLabel != null)
+            if (noButtonLabelText != null)
             {
-                noButtonLabel.text = noButtonText;
+                noButtonLabelText.text = noButtonText;
             }
         }
 
@@ -166,15 +178,15 @@ namespace GGFramework.GGUI
         {
             if (yesButton != null)
             {
-                yesButton.gameObject.SetActive(IsOptionOn(Option.Yes));
+                yesButton.SetActive(IsOptionOn(Option.Yes));
             }
             if (noButton != null)
             {
-                noButton.gameObject.SetActive(IsOptionOn(Option.No));
+                noButton.SetActive(IsOptionOn(Option.No));
             }
             if (cancelButton != null)
             {
-                cancelButton.gameObject.SetActive(IsOptionOn(Option.Cancel));
+                cancelButton.SetActive(IsOptionOn(Option.Cancel));
             }
             SetButtonText(initYesButtonText, initNoButtonText);
             UpdateLayout();
@@ -207,7 +219,7 @@ namespace GGFramework.GGUI
             }
             if (buttonGrid != null)
             {
-                buttonGrid.repositionNow = true;
+                buttonGrid.Reposition();
             }
         }
     }

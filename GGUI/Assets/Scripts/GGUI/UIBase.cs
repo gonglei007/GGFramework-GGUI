@@ -17,24 +17,14 @@ namespace GGFramework.GGUI
 
         public GameObject tweenObject = null;
         public string tweenAnimationName = null;
-        private UIPlayTween tweener = null;
+        private IUITweener tweener = null;
 
         protected virtual void Awake()
         {
             if (tweenObject != null)
             {
-                tweener = tweenObject.AddComponent<UIPlayTween>();
-                tweener.tweenTarget = tweenObject;
-                tweener.resetOnPlay = true;
-                tweener.resetIfDisabled = true;
-                if (tweenAnimationName != null && tweenObject != null)
-                {
-                    UITweener[] tweeners = UISystem.Instance.UITweenerFactory.GetUITweeners(tweenAnimationName);
-                    if (tweeners != null)
-                    {
-                        ComponentUtil.CopyComponent<UITweener>(tweeners, tweenObject);
-                    }
-                }
+                // 通过实现层创建补间控制器，核心层不再直接依赖 NGUI 的 UIPlayTween/UITweener。
+                tweener = UISystem.Instance.Implementation.CreateTweener(tweenObject, tweenAnimationName);
             }
         }
 

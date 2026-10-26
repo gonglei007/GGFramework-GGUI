@@ -12,9 +12,13 @@ namespace GGFramework.GGUI
      */
     public class UILoading : UIBase
     {
-        public UILabel labelInfo = null;
-        public UILabel labelTips = null;
-        public UIProgressBar pbLoading = null;
+        // 由具体控件改为 GameObject 引用（可序列化、引擎无关），OnLoad 时经实现层包装。
+        public GameObject labelInfo = null;
+        public GameObject labelTips = null;
+        public GameObject pbLoading = null;
+        private IUIText labelInfoText = null;
+        private IUIText labelTipsText = null;
+        private IUIProgressBar loadingBar = null;
         public float hintSwitchTime = 3.0f;
         public Transform fxRoot;
         public GameObject baseLoadingRoot;
@@ -40,31 +44,35 @@ namespace GGFramework.GGUI
 
         public override void OnLoad()
         {
-            //TODO: 获取页面上的对象。
+            // 通过实现层包装控件，核心层不再直接依赖 NGUI 类型。
+            IUIImplementation impl = UISystem.Instance.Implementation;
+            labelInfoText = impl.WrapText(labelInfo);
+            labelTipsText = impl.WrapText(labelTips);
+            loadingBar = impl.WrapProgressBar(pbLoading);
         }
 
         public void SetPercent(float percent)
         {
-            if (pbLoading != null)
+            if (loadingBar != null)
             {
-                pbLoading.value = percent;
+                loadingBar.value = percent;
             }
         }
 
         public void SetInfo(string info)
         {
-            if (labelInfo != null)
+            if (labelInfoText != null)
             {
-                labelInfo.text = info;
+                labelInfoText.text = info;
             }
         }
 
         public void SetTips(string tips)
         {
             hint = tips;
-            if (labelTips != null)
+            if (labelTipsText != null)
             {
-                labelTips.text = hint == null ? "" : hint;
+                labelTipsText.text = hint == null ? "" : hint;
             }
         }
 
@@ -82,7 +90,10 @@ namespace GGFramework.GGUI
                     {
                         int hintIndex = UnityEngine.Random.Range(1, hintCount + 1);
                         string strHint = UISystem.Instance.TextAdaptor.GetText("hint_text_" + hintIndex.ToString());
-                        labelTips.text = strHint == null ? "" : strHint;
+                        if (labelTipsText != null)
+                        {
+                            labelTipsText.text = strHint == null ? "" : strHint;
+                        }
                     }
                 }
             }

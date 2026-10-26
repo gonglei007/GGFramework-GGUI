@@ -15,7 +15,6 @@ namespace GGFramework.GGUI
     {
         private Animation animationCtrl;
         private AnimationClip clip;
-        private UITweener uiTweener;
         private Action onShowFinish;
         private Action onHideFinish;
 

@@ -27,7 +27,18 @@ namespace GGFramework.GGUI
             Count,
         };
 
-        private UITweenerFactory uiTweenerFactory = new UITweenerFactory();
+        // UI 实现层。核心逻辑通过它调用具体引擎（NGUI/UGUI），实现解耦与运行期切换。
+        private static IUIImplementation sImplementation;
+
+        /// <summary>
+        /// 在 UISystem 实例创建（Awake）之前调用，用于注入 UI 实现（例如切换到 UGUI）。
+        /// 一旦实例初始化后不再中途切换，避免运行期控件类型错乱。
+        /// </summary>
+        public static void SetImplementation(IUIImplementation implementation)
+        {
+            sImplementation = implementation;
+        }
+
         public GameObject uiAnimationRoot = null;
         //public GameObject popTweener;
 
@@ -62,11 +73,19 @@ namespace GGFramework.GGUI
             }
         }
 
-        public UITweenerFactory UITweenerFactory
+        /// <summary>
+        /// 当前生效的 UI 实现层。
+        /// </summary>
+        public IUIImplementation Implementation { get; private set; }
+
+        /// <summary>
+        /// 实例级注入 UI 实现（仅在 Awake 之前、Implementation 尚未初始化时生效）。
+        /// </summary>
+        public void Init(IUIImplementation implementation)
         {
-            get
+            if (implementation != null && Implementation == null)
             {
-                return uiTweenerFactory;
+                Implementation = implementation;
             }
         }
 
@@ -76,9 +95,16 @@ namespace GGFramework.GGUI
 
         private void Awake()
         {
+            // 未注入实现时默认使用 NGUI，保证既有行为不回归。
+            if (Implementation == null)
+            {
+                Implementation = sImplementation ?? new NGUI.NGUIImplementation();
+            }
+
             GameObject root = new GameObject();
             mRoot = root.AddComponent<UIBase>();
             root.name = "uiRoot";
+            Implementation.Init(root, uiAnimationRoot);
 
             for (int i = (int)UILayer.Root; i < (int)UILayer.Count; ++i)
             {
@@ -86,7 +112,6 @@ namespace GGFramework.GGUI
                 GetCreateGroup(((UILayer)i));
             }
             mUITable[UILayer.Root]["Root"] = mRoot;
-            uiTweenerFactory.Init(uiAnimationRoot);
             ResourceSystem.Instance.onResourceLoaded += OnUIResourceLoaded;
             //TODO: GL - 构建存储UI对象的分组GameObject
         }
@@ -147,20 +172,8 @@ namespace GGFramework.GGUI
             {
                 return transform.gameObject;
             }
-            GameObject groupObject = new GameObject(layerName);
-            groupObject.layer = LayerMask.NameToLayer("UI");
-            groupObject.transform.parent = uiRoot.transform;
-            groupObject.transform.localPosition = Vector3.zero;
-            groupObject.transform.localRotation = Quaternion.identity;
-            groupObject.transform.localScale = Vector3.one;
-            UIPanel panel = groupObject.AddComponent<UIPanel>();
-            if (UILayerDepth.ContainsKey(layer))
-            {
-                panel.useSortingOrder = true;
-                panel.depth = UILayerDepth[layer];
-                panel.sortingOrder = UILayerDepth[layer];
-            }
-            return groupObject;
+            int depth = UILayerDepth.ContainsKey(layer) ? UILayerDepth[layer] : 0;
+            return Implementation.CreateLayerGroup(layerName, depth, uiRoot.transform);
         }
 
         public void SetUIBase(UISystem.UILayer layer, string name, UIBase uiBase)

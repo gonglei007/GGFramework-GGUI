@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-namespace GGFramework.GGUI
+namespace GGFramework.GGUI.NGUI
 {
 	public class UILabelLocalization : MonoBehaviour
 	{
