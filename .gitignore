@@ -3,3 +3,13 @@ GGUI/Library
 GGUI/Temp
 GGUI/Logs
 GGUI/obj/Debug
+
+# IDE 自动生成的工程/解决方案文件（Unity 会重建，不入库）
+*.csproj
+*.sln
+
+# Unity 用户本地状态（不同机器/IDE 布局，不入库）
+GGUI/UserSettings/
+
+# Qoder IDE 本地缓存
+.qoder/
