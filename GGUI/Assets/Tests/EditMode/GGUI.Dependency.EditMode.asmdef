@@ -2,6 +2,7 @@
     "name": "GGUI.Dependency.EditMode",
     "rootNamespace": "",
     "references": [
+        "GGFramework.Core.Runtime",
         "Dependency",
         "LocalPackages",
         "UnityEngine.TestRunner",
