@@ -306,7 +306,9 @@ namespace Loxodon.Framework.Bundles.Editors
             if (!Directory.Exists(path))
                 Directory.CreateDirectory(path);
 
-            BuildAssetBundleOptions options = BuildAssetBundleOptions.DeterministicAssetBundle;
+            // Unity 6 升级适配：BuildAssetBundleOptions.DeterministicAssetBundle 已被标记为 obsolete-error(CS0619)，
+            // 且在新 AssetBundle 构建系统中始终启用，等价于 None；此处改为 None 以保持语义不变。
+            BuildAssetBundleOptions options = BuildAssetBundleOptions.None;
             switch (this.Compression)
             {
                 case CompressOptions.Uncompressed:
