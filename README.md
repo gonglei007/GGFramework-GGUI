@@ -6,12 +6,12 @@
     <a href="https://github.com/gonglei007/GGFramework-GGUI/network/members" target="_blank"><img src="https://img.shields.io/github/forks/gonglei007/GGFramework-GGUI.svg" style="display: inherit;"/></a>
     <img src="https://img.shields.io/github/repo-size/gonglei007/GGFramework-GGUI.svg" style="display: inherit;"/>
   </p>
-  <p align="center">一个基于 NGUI 的游戏客户端 UI 框架</p>
+  <p align="center">一个抽象 UI 接口层、底层实现可插拔（默认 NGUI）的游戏客户端 UI 框架</p>
 </p>
 
 ## 简介
 
-GGUI 是一个面向游戏客户端的 UI 框架，**基于 NGUI** 构建。它提供分层的 UI 管理、栈式页面导航、通用窗口/对话框/加载组件，以及丰富的控件扩展库，帮助团队快速、稳定地搭建游戏界面层，并可与 GGResource（资源）、GGNetwork（网络）等 GG 框架模块组合使用。
+GGUI 是一个面向游戏客户端的 UI 框架。它把控件能力抽象为 **UI 接口层**（`Abstraction/`：`IUIImplementation` / `IUIButton` / `IUIText` / `IUITweener` / `IUIProgressBar` / `IUILayoutGroup`），底层实现可插拔——当前**默认提供 NGUI 实现**（`Implementation/NGUI/`），并预置 **UGUI 占位实现**（`Implementation/UGUI/`，骨架待补全）。它提供分层的 UI 管理、栈式页面导航、通用窗口/对话框/加载组件，以及丰富的控件扩展库，帮助团队快速、稳定地搭建游戏界面层，并可与 GGResource（资源）、GGNetwork（网络）等 GG 框架模块组合使用。
 
 ### 架构示意
 
@@ -80,7 +80,7 @@ flowchart TB
     <tr>
         <td>GGUI/Assets/Scripts/GGUI</td>
         <td>框架代码</td>
-        <td>可以直接复制到目标工程中使用。</td>
+        <td>可以直接复制到目标工程中使用（需另加 GGFramework.Core UPM 依赖，见「依赖」）。</td>
     </tr>
     <tr>
         <td>GGUI/Assets/Demo</td>
@@ -91,7 +91,8 @@ flowchart TB
 
 ## 依赖
 
-* **NGUI** — 底层 UI 控件系统（位于 `Assets/LocalPackages`）
+* **GGFramework.Core** — `Singleton` / `CoroutineUtil` 等基础类的单一源，经 UPM git URL 引用（`#v0.1.1`）；工程内原本地 `Singleton.cs` / `CoroutineUtil.cs` 副本已删除（`Dependency/Utils/` 现仅剩 `GameDebugger`）
+* **NGUI** — 默认 UI 底层实现依赖的控件系统（位于 `Assets/LocalPackages`）；经 `Abstraction/` 接口层解耦，可替换为 UGUI 等实现
 * **Loxodon Framework** — AssetBundle 资源加载底层（位于 `Assets/LocalPackages`）
 * **SimpleJson** — 轻量 JSON 序列化辅助
 
@@ -102,6 +103,7 @@ flowchart TB
 | `UISystem` | 核心总控（单例）：分层管理、页面栈、窗口/对话框/加载/等待管理 |
 | `UIBase` | 所有 UI 基类，提供生命周期钩子与显隐动画流程 |
 | `UIPage` / `UIWindow` / `UIDialog` / `UILoading` / `UIWaiting` | 开箱即用的派生 UI 类型 |
+| `IUIImplementation`（`Abstraction/`） | UI 底层实现抽象接口；`NGUIImplementation`（默认）/ `UGUIImplementation`（占位）分别实现 |
 
 ## 文档
 
@@ -117,7 +119,7 @@ flowchart TB
 ## TODO-List
 
 * 更完整的 Demo 演示
-* 补齐 missing 文档（documents/ 目录与 quickstart.md 待补全）
+* 补全 UGUI 占位实现（`Implementation/UGUI/`），使 UI 接口层可脱离 NGUI 运行
 
 ## 更多资料
 

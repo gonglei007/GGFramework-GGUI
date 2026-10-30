@@ -1,8 +1,8 @@
 # GGUI 快速接入指南（Quick Start）
 
-> GGUI 是一个**基于 NGUI** 的游戏客户端 UI 框架，命名空间 `GGFramework.GGUI`。
+> GGUI 是一个游戏客户端 UI 框架，命名空间 `GGFramework.GGUI`；控件能力抽象为 UI 接口层（`Abstraction/`），**默认由 NGUI 实现**（`Implementation/NGUI/`），另含 UGUI 占位实现（`Implementation/UGUI/`）。
 > 本文档带领你从零开始，把 GGUI 接入自己的 Unity 工程，并跑起第一个页面 / 窗口 / 对话框。
-> 引擎版本：Unity 2021.3.4f1c1。
+> 引擎版本：Unity 6000.3.13f1。
 
 ---
 
@@ -32,11 +32,14 @@
         ├── Utils/ComponentUtil.cs / UILabelLocalization.cs / UIAnimationClipEvent.cs
         ├── NGUIExtend/            ← 约 20 个 NGUI 扩展控件（可选）
         ├── Components/ · FX/ · Bridge/
+        ├── Abstraction/           ← UI 接口层（IUIImplementation / IUIButton / IUIText / IUITweener / IUIProgressBar / IUILayoutGroup）
+        ├── Implementation/NGUI/   ← 默认底层实现（NGUI）
+        └── Implementation/UGUI/   ← UGUI 占位实现（骨架，待补全）
 ```
 
 > GGUI 框架自身（`GGUI/Assets/Scripts/GGUI/`）依赖一套 `Dependency` 基础库
-> （`ResourceSystem`、`Singleton`、`CoroutineUtil`、`GameDebugger`、`ResourceItem`、`ResourceObject` 等）。
-> 请一并把仓库 `GGUI/Assets/Scripts/Dependency/` 目录拷入工程。它们与实际业务代码（`Demo.cs` 等）位于工程根命名空间，**不带** `GGFramework.*` 前缀。
+> （`ResourceSystem`、`ResourceItem`、`ResourceObject`、`GameDebugger` 等，位于仓库 `GGUI/Assets/Scripts/Dependency/`），请一并拷入工程；它们与实际业务代码（`Demo.cs` 等）位于工程根命名空间，**不带** `GGFramework.*` 前缀。
+> 而 `Singleton` / `CoroutineUtil` 已收敛到 **GGFramework.Core** 单一源（工程内本地副本已删除），需在 `Packages/manifest.json` 添加：`"com.gonglei.ggframework.core": "https://github.com/gonglei007/GGFramework-Core.git#v0.1.1"`（`Dependency.asmdef` 已引用 `GGFramework.Core.Runtime`）。
 
 ---
 
@@ -46,7 +49,8 @@ GGUI 依赖以下第三方库，需一并放入工程（本仓库放置于 `Asse
 
 | 依赖 | 用途 |
 | --- | --- |
-| **NGUI** | 底层 UI 控件系统（`UILabel` / `UISprite` / `UIButton` / `UITweener` / `UIPlayTween` / `UIPanel`…） |
+| **GGFramework.Core** | `Singleton` / `CoroutineUtil` 基础类单一源（UPM git URL 引用 `#v0.1.1`） |
+| **NGUI** | 默认 UI 底层实现依赖的控件系统（`UILabel` / `UISprite` / `UIButton` / `UITweener` / `UIPlayTween` / `UIPanel`…）；经 `Abstraction/` 接口层解耦 |
 | **Loxodon Framework** | AssetBundle 资源异步加载底层 |
 | **SimpleJson** | 轻量 JSON 序列化辅助 |
 
