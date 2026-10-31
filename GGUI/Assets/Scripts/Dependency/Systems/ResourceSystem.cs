@@ -212,7 +212,7 @@ public class ResourceSystem : Singleton<ResourceSystem>
         List<string> assetList = assetsInBundle[bundleName];
         foreach (string asset in assetList) {
             ResourceObject resourceObject = GetObject(tag, asset);
-            if (resourceObject != null && resourceObject.assetObject != null && resourceObject.assetObject is T) {
+            if (resourceObject != null && resourceObject.assetObject is T) {
                 assetListByType.Add(resourceObject);
             }
         }
@@ -342,7 +342,9 @@ public class ResourceSystem : Singleton<ResourceSystem>
     public void DoLoading()
     {
         this.loadNumber = 0;
-        this.loadTotal = p0ResourceSet.Count;
+        // P1 修复：loadTotal 此前取 p0ResourceSet.Count（仅 0 优先级资源），而 loadNumber 对每个完成资源自增，
+        // 存在非 p0 资源时进度会出现 loadNumber>loadTotal 或提前到顶。改为取本轮实际入队数量，与 loadNumber 语义对齐。
+        this.loadTotal = loadingList.Count;
         //TODO: 一次处理的数量要有限制。
         //int resourceCount = loadingQueue.Count;
         int resourceCount = loadingList.Count;
@@ -532,26 +534,80 @@ public class ResourceSystem : Singleton<ResourceSystem>
         }
     }
 
+    /// <summary>
+    /// 获取一个引用（引用计数 +1）。消费方在开始持有某个缓存资源时调用，与 DestroyObject 的释放配对。
+    /// 未命中时静默返回，与现有容错风格一致。
+    /// </summary>
+    public void Retain(Tag tag, string name) {
+        ResourceObject obj = GetObject(tag, name);
+        if (obj != null) {
+            obj.refCount++;
+        }
+    }
+
+    /// <summary>
+    /// 释放一个引用（release-one-reference），而非无条件销毁：
+    /// refCount>0 时仅自减；归零时才真正销毁共享 asset 并从缓存移除。
+    /// 对从未 Retain 的对象（refCount=0），单次调用即销毁+移除，与旧行为保持一致（向后兼容）。
+    /// 这样被多处持有的共享 asset 不会在仍被使用时被提前销毁。
+    /// </summary>
     public void DestroyObject(Tag tag, string name) {
         string key = GetKeyByGroupTag(this.Group, tag);
+        if (!resourceBuffer.ContainsKey(key)) {
+            return;
+        }
         Dictionary<string, ResourceObject> resourceTable = resourceBuffer[key];
         if (resourceTable.ContainsKey(name))
         {
             ResourceObject obj = resourceTable[name];
             if (obj != null)
             {
-                Destroy(obj.assetObject);
-                resourceTable.Remove(name);
+                if (obj.refCount > 0) {
+                    obj.refCount--;
+                }
+                if (obj.refCount == 0) {
+                    DestroyAsset(obj.assetObject);
+                    resourceTable.Remove(name);
+                }
             }
         }
     }
 
+    /// <summary>
+    /// 安全销毁 asset：Object.Destroy 仅在播放模式生效，编辑器（含 EditMode 单元测试）中须用 DestroyImmediate。
+    /// 与 Core GameObjectPool 的 DestroySafe 模式一致，使释放逻辑在编辑器下也可用、可测。
+    /// </summary>
+    private void DestroyAsset(UnityEngine.Object asset) {
+        if (asset == null) {
+            return;
+        }
+        if (Application.isPlaying) {
+            Destroy(asset);
+        } else {
+            DestroyImmediate(asset);
+        }
+    }
+
+    /// <summary>
+    /// 硬卸载指定 group 下缓存的所有资源对象并清空其表（显式 teardown，忽略 refCount）。
+    /// 调用方需确保该组内没有对象仍在使用。先快照 keys，避免遍历 resourceBuffer.Keys 时修改字典抛 InvalidOperationException。
+    /// </summary>
     public void ClearObjects(string group) {
-        foreach (string key in resourceBuffer.Keys) {
+        List<string> keys = new List<string>(resourceBuffer.Keys);
+        foreach (string key in keys) {
             string[] keyItems = key.Split('-');
             if (keyItems.Length > 0) {
                 if (keyItems[0] == group) {
-                    //TODO: 清理
+                    Dictionary<string, ResourceObject> resourceTable = resourceBuffer[key];
+                    if (resourceTable == null) {
+                        continue;
+                    }
+                    foreach (ResourceObject obj in resourceTable.Values) {
+                        if (obj != null) {
+                            DestroyAsset(obj.assetObject);
+                        }
+                    }
+                    resourceTable.Clear();
                 }
             }
         }
@@ -613,7 +669,8 @@ public class ResourceSystem : Singleton<ResourceSystem>
     /// 清理当前stage的资源。
     /// </summary>
     public void ClearResources() {
-        //Debug.Assert(false, "To implementation!!!");
+        // 因 Group setter 恒为 "all"，等价于清理当前统一组缓存的资源对象。
+        ClearObjects(this.Group);
     }
 
     public void StartLoading(Action<Exception> onHighResourceLoaded, Action<Exception> onAllResourceLoaded) {
@@ -729,24 +786,89 @@ public class ResourceSystem : Singleton<ResourceSystem>
             IProgressResult<float, IBundle> bundleResult = resources.LoadBundle(bundleName);
 
             bundleResult.Callbackable().OnCallback((br) => {
-                FixShaders(br);
-                if (assetName != null)
+                try
                 {
-                    IProgressResult<float, UnityEngine.Object> assetResult = br.Result.LoadAssetAsync<UnityEngine.Object>(assetName);
-                    assetResult.Callbackable().OnCallback((ar) => {
-                        onLoaded(ar.Result);
-                        onFinish();
-                    });
+                    // P1 修复：运行时分支此前缺少与编辑器分支对等的异常/空结果处理，且 onFinish 未判空——
+                    // LoadFloatAssetAsync 传入 onFinish=null 时真机必抛 NullReferenceException。
+                    if (br.Exception != null)
+                    {
+                        throw br.Exception;
+                    }
+                    if (br.Result == null)
+                    {
+                        throw new Exception("Load bundle failed, result is null: " + bundleName);
+                    }
+
+                    FixShaders(br);
+
+                    if (assetName != null)
+                    {
+                        IProgressResult<float, UnityEngine.Object> assetResult = br.Result.LoadAssetAsync<UnityEngine.Object>(assetName);
+                        assetResult.Callbackable().OnCallback((ar) => {
+                            try
+                            {
+                                if (ar.Exception != null)
+                                {
+                                    throw ar.Exception;
+                                }
+                                if (onLoaded != null)
+                                {
+                                    onLoaded(ar.Result);
+                                }
+                            }
+                            catch (System.Exception e)
+                            {
+                                Debug.LogErrorFormat("LoadBundleAssetsAsync bundleName: {0}, asset:{1}, load asset failure. Error:{2}", bundleName, assetName, e);
+                            }
+                            finally
+                            {
+                                if (onFinish != null)
+                                {
+                                    onFinish();
+                                }
+                            }
+                        });
+                    }
+                    else
+                    {
+                        IProgressResult<float, UnityEngine.Object[]> assetResult = br.Result.LoadAllAssetsAsync<UnityEngine.Object>();
+                        assetResult.Callbackable().OnCallback((ar) => {
+                            try
+                            {
+                                if (ar.Exception != null)
+                                {
+                                    throw ar.Exception;
+                                }
+                                foreach (UnityEngine.Object prefab in ar.Result)
+                                {
+                                    if (onLoaded != null)
+                                    {
+                                        onLoaded(prefab);
+                                    }
+                                }
+                            }
+                            catch (System.Exception e)
+                            {
+                                Debug.LogErrorFormat("LoadBundleAssetsAsync bundleName: {0}, load all assets failure. Error:{1}", bundleName, e);
+                            }
+                            finally
+                            {
+                                if (onFinish != null)
+                                {
+                                    onFinish();
+                                }
+                            }
+                        });
+                    }
                 }
-                else {
-                    IProgressResult<float, UnityEngine.Object[]> assetResult = br.Result.LoadAllAssetsAsync<UnityEngine.Object>();
-                    assetResult.Callbackable().OnCallback((ar) => {
-                        foreach (UnityEngine.Object prefab in ar.Result)
-                        {
-                            onLoaded(prefab);
-                        }
+                catch (System.Exception e)
+                {
+                    Debug.LogErrorFormat("LoadBundleAssetsAsync bundleName: {0}, asset:{1}, load bundle failure. Error:{2}", bundleName, assetName, e);
+                    // 失败也要推进加载队列，避免 Whilst 管道因 onFinish 未触发而停滞。
+                    if (onFinish != null)
+                    {
                         onFinish();
-                    });
+                    }
                 }
             });
         }
