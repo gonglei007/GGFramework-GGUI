@@ -26,13 +26,110 @@ flowchart TB
         L6[FX / Message 层]
     end
     UISystem[UISystem 单例<br/>分层管理 + 页面栈 + 生命周期] --> UIRoot
-    UISystem --> Anim[UITweenerFactory<br/>NGUI Tween 动画]
+    UISystem --> Impl[IUIImplementation<br/>UI 实现层 · NGUI 默认 / UGUI 占位]
     UISystem --> Text[TextAdaptor<br/>本地化适配]
     UIBase[UIBase 基类<br/>OnLoad/OnPreShow/OnShowed/OnPreHide] --> UISystem
     UIPage & UIWindow & UIDialog & UILoading & UIWaiting --> UIBase
 ```
 
 > **8 层 UI**：Page / Window / UIFX / Loading / Dialog / Message / Waiting，每层有独立排序深度；`UIBase` 统一生命周期，`ResourceSystem` 异步加载页面 Prefab。
+
+### UI 接口层类图
+
+核心层只依赖 `Abstraction/` 的 6 个引擎无关接口；`UISystem` 持有一个 `IUIImplementation`（默认 `NGUIImplementation`，可注入 `UGUIImplementation`），由它创建/查找各类控件抽象；`UIBase` 及其派生类通过实现层拿到 `IUITweener` 播放显隐动画。切换 UI 后端时业务侧无需改动。
+
+```mermaid
+classDiagram
+    class UISystem {
+        <<Singleton>>
+        +IUIImplementation Implementation
+        +SetImplementation(impl)
+        +PresentPage(name)
+        +DismissPage(name)
+        +ShowWindow(name)
+        +PopDialog(title, msg, options)
+    }
+    class UIBase {
+        <<MonoBehaviour>>
+        +Show()
+        +Hide()
+        +OnLoad()
+        +OnPreShow()
+        +OnShowed()
+        +OnPreHide()
+    }
+    class IUIImplementation {
+        <<interface>>
+        +string Name
+        +Init(uiRoot, animRoot)
+        +CreateLayerGroup(layer, depth, parent) GameObject
+        +CreateTweener(target, anim) IUITweener
+        +FindText(root, path) IUIText
+        +FindButton(root, path) IUIButton
+        +FindProgressBar(root, path) IUIProgressBar
+        +FindLayoutGroup(root, path) IUILayoutGroup
+        +AddClickHandler(target, handler)
+    }
+    class IUIButton {
+        <<interface>>
+        +GameObject gameObject
+        +SetActive(active)
+        +AddClickListener(handler)
+        +RemoveClickListener(handler)
+    }
+    class IUIText {
+        <<interface>>
+        +string text
+        +GameObject gameObject
+    }
+    class IUITweener {
+        <<interface>>
+        +Play(forward)
+    }
+    class IUIProgressBar {
+        <<interface>>
+        +float value
+        +GameObject gameObject
+    }
+    class IUILayoutGroup {
+        <<interface>>
+        +float cellWidth
+        +Reposition()
+        +GameObject gameObject
+    }
+
+    UISystem o-- IUIImplementation : Implementation
+    UISystem ..> UIBase : 管理页面栈/窗口/对话框
+    UIBase ..> IUITweener : 持有显隐动画
+
+    UIBase <|-- UIPage
+    UIBase <|-- UIWindow
+    UIBase <|-- UIDialog
+    UIBase <|-- UILoading
+    UIBase <|-- UIWaiting
+
+    IUIImplementation ..> IUITweener : 创建
+    IUIImplementation ..> IUIText : 查找/包装
+    IUIImplementation ..> IUIButton : 查找
+    IUIImplementation ..> IUIProgressBar : 查找/包装
+    IUIImplementation ..> IUILayoutGroup : 查找
+
+    IUIImplementation <|.. NGUIImplementation : 默认实现
+    IUIButton <|.. NGUIButton
+    IUIText <|.. NGUIText
+    IUITweener <|.. NGUITweener
+    IUIProgressBar <|.. NGUIProgressBar
+    IUILayoutGroup <|.. NGUIGrid
+
+    IUIImplementation <|.. UGUIImplementation : 占位实现
+    IUIButton <|.. UGUIButton
+    IUIText <|.. UGUIText
+    IUITweener <|.. UGUITweener
+    IUIProgressBar <|.. UGUIProgressBar
+    IUILayoutGroup <|.. UGUILayoutGroup
+```
+
+> 图以 **mermaid** 内嵌维护（GitHub 原生渲染，改图即改文本）。图表格式约定见 GGFramework-Docs `architecture/architecture-diagram.md` §5。
 
 ## 功能与特性
 
@@ -104,6 +201,7 @@ flowchart TB
 | `UIBase` | 所有 UI 基类，提供生命周期钩子与显隐动画流程 |
 | `UIPage` / `UIWindow` / `UIDialog` / `UILoading` / `UIWaiting` | 开箱即用的派生 UI 类型 |
 | `IUIImplementation`（`Abstraction/`） | UI 底层实现抽象接口；`NGUIImplementation`（默认）/ `UGUIImplementation`（占位）分别实现 |
+| `IUIButton` / `IUIText` / `IUITweener` / `IUIProgressBar` / `IUILayoutGroup`（`Abstraction/`） | 引擎无关控件抽象；各有 `NGUI*`（默认）与 `UGUI*`（占位）两套实现 |
 
 ## 文档
 
