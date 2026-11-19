@@ -1,13 +1,34 @@
-<p align="center">
-  <h1 align="center">GGUI (内测版)</h1>
-  <p align="center">
-    <a href="https://github.com/gonglei007/GGFramework-GGUI/watchers" target="_blank"><img src="https://img.shields.io/github/watchers/gonglei007/GGFramework-GGUI.svg" style="display: inherit;"/></a>
-    <a href="https://github.com/gonglei007/GGFramework-GGUI/stargazers" target="_blank"><img src="https://img.shields.io/github/stars/gonglei007/GGFramework-GGUI.svg" style="display: inherit;"/></a>
-    <a href="https://github.com/gonglei007/GGFramework-GGUI/network/members" target="_blank"><img src="https://img.shields.io/github/forks/gonglei007/GGFramework-GGUI.svg" style="display: inherit;"/></a>
-    <img src="https://img.shields.io/github/repo-size/gonglei007/GGFramework-GGUI.svg" style="display: inherit;"/>
-  </p>
-  <p align="center">一个抽象 UI 接口层、底层实现可插拔（默认 NGUI）的游戏客户端 UI 框架</p>
-</p>
+# GGUI (内测版)
+
+Unity 游戏客户端 UI 框架，提供可插拔控件接口、分层管理、栈式页面导航以及窗口、对话框、加载和等待组件，默认使用 NGUI。
+
+[![Unity 6000.3.13f1](https://img.shields.io/badge/Unity-6000.3.13f1-222222?logo=unity)](https://github.com/gonglei007/GGFramework-GGUI/blob/master/GGUI/ProjectSettings/ProjectVersion.txt) [![Core dependency v0.1.1](https://img.shields.io/badge/Core_dependency-v0.1.1-2563eb)](https://github.com/gonglei007/GGFramework-Core/tree/v0.1.1) [![Branch master](https://img.shields.io/badge/Branch-master-64748b)](https://github.com/gonglei007/GGFramework-GGUI/tree/master)
+
+## 项目导航
+
+[Demo 体验](https://github.com/gonglei007/GGFramework-Demo) · [架构文档](https://github.com/gonglei007/GGFramework-Docs) · [Core](https://github.com/gonglei007/GGFramework-Core) · [GGResource](https://github.com/gonglei007/GGFramework-GGResource) · [GGNetwork](https://github.com/gonglei007/GGFramework-GGNetwork) · **GGUI** · [GGUser](https://github.com/gonglei007/GGFramework-GGUser)
+
+> **先体验整体框架**：[打开独立 Demo](https://github.com/gonglei007/GGFramework-Demo#快速开始)，体验资源、HTTP、UI、用户 SDK 与 Lua 的集成流程。[操作指南](https://github.com/gonglei007/GGFramework-Demo/blob/main/documents/showcase-guide.md) · [验收记录](https://github.com/gonglei007/GGFramework-Demo/blob/main/documents/showcase-verification.md)。
+
+## 模块关系
+
+本工程通过 UPM 固定使用 **Core v0.1.1**，`Dependency` 中包含资源实现副本；UI 控件经 `Abstraction` 与后端解耦。NGUI 为现有实现，UGUI 目录是待补全的占位骨架。Demo 的旧 UI 集成副本用于体验页面流程，当前接口层以本仓库为准。
+
+完整依赖图、工程锁定版本和源码副本边界由[架构文档中心](https://github.com/gonglei007/GGFramework-Docs#模块关系)统一维护。
+
+## 快速开始
+
+在准备存放代码的目录运行：
+
+```powershell
+git clone https://github.com/gonglei007/GGFramework-GGUI.git
+# 在 Unity Hub 中打开 GGFramework-GGUI/GGUI
+```
+
+1. 用 Unity **6000.3.13f1** 打开 `GGUI` 工程。GitHub 默认维护分支为 **master**。
+2. 从[集成 Demo 的 UI 页](https://github.com/gonglei007/GGFramework-Demo/blob/main/documents/showcase-guide.md)体验页面入栈 / 返回、窗口归属与关闭，再查看本模块 [Demo.unity](GGUI/Assets/Demo/Demo.unity) 和[演示脚本](GGUI/Assets/Demo/Scripts/Demo.cs)。
+3. 接入时按[快速接入指南](documents/quickstart.md)准备框架、Dependency、NGUI 和资源依赖，建立 Tag 为 `UIRoot` 的根对象。
+4. 本模块旧示例依赖 Game / 通用 UI 资源。先初始化资源、加载框架 UI 并调用 `CreateFrameworkUIs`，再使用页面、窗口或对话框；完整顺序与资源准备见接入指南。
 
 ## 简介
 
@@ -205,8 +226,8 @@ classDiagram
 
 ## 文档
 
-* [如何快速接入?](/documents/quickstart.md)
-* [技术手册](/documents/manual.md)
+* [如何快速接入?](documents/quickstart.md)
+* [技术手册](documents/manual.md)
 
 ## 进群沟通
 
