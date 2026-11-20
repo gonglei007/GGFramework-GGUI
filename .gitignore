@@ -13,3 +13,7 @@ GGUI/UserSettings/
 
 # Qoder IDE 本地缓存
 .qoder/
+
+# CI tool checkout and generated regression evidence
+.ci-tools/
+.ci-output/
