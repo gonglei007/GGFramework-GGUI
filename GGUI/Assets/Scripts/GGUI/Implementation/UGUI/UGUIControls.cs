@@ -3,151 +3,80 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using TMPro;
 
 namespace GGFramework.GGUI.UGUI
 {
-    /// <summary>
-    /// 基于 UGUI Text 的文本控件实现。
-    /// </summary>
-    public class UGUIText : IUIText
+    public class UGUIText:IUIText
     {
-        private readonly Text textComponent;
-
-        public UGUIText(Text textComponent)
-        {
-            this.textComponent = textComponent;
-        }
-
-        public string text
-        {
-            get { return textComponent != null ? textComponent.text : null; }
-            set { if (textComponent != null) { textComponent.text = value; } }
-        }
-
-        public GameObject gameObject
-        {
-            get { return textComponent != null ? textComponent.gameObject : null; }
-        }
+        readonly Text target;
+        public UGUIText(Text target){this.target=target;}
+        public string text{get=>target?target.text:null;set{if(target)target.text=value;}}
+        public GameObject gameObject=>target?target.gameObject:null;
     }
-
-    /// <summary>
-    /// 基于 UGUI Button 的按钮实现。点击回调统一转换为携带 GameObject 参数的形式，与 NGUI 行为对齐。
-    /// </summary>
-    public class UGUIButton : IUIButton
+    public class UGUITMPText:IUIText
     {
-        private readonly Button button;
-        private readonly Dictionary<Action<GameObject>, UnityAction> handlers = new Dictionary<Action<GameObject>, UnityAction>();
-
-        public UGUIButton(Button button)
-        {
-            this.button = button;
-        }
-
-        public GameObject gameObject
-        {
-            get { return button != null ? button.gameObject : null; }
-        }
-
-        public void SetActive(bool active)
-        {
-            if (button != null)
-            {
-                button.gameObject.SetActive(active);
-            }
-        }
-
+        readonly TMP_Text target;
+        public UGUITMPText(TMP_Text target){this.target=target;}
+        public string text{get=>target?target.text:null;set{if(target)target.text=value;}}
+        public GameObject gameObject=>target?target.gameObject:null;
+    }
+    public class UGUIButton:IUIButton
+    {
+        readonly Button button;
+        readonly Dictionary<Action<GameObject>,UnityAction> handlers=new Dictionary<Action<GameObject>,UnityAction>();
+        public UGUIButton(Button button){this.button=button;}
+        public GameObject gameObject=>button?button.gameObject:null;
+        public void SetActive(bool active){if(button)button.gameObject.SetActive(active);}
         public void AddClickListener(Action<GameObject> handler)
-        {
-            if (button == null || handler == null)
-            {
-                return;
-            }
-            GameObject sender = button.gameObject;
-            UnityAction wrapped = () => handler(sender);
-            handlers[handler] = wrapped;
-            button.onClick.AddListener(wrapped);
-        }
-
+        {if(!button||handler==null||handlers.ContainsKey(handler))return;UnityAction wrapped=()=>handler(button.gameObject);handlers.Add(handler,wrapped);button.onClick.AddListener(wrapped);}
         public void RemoveClickListener(Action<GameObject> handler)
-        {
-            if (button == null || handler == null)
-            {
-                return;
-            }
-            UnityAction wrapped;
-            if (handlers.TryGetValue(handler, out wrapped))
-            {
-                button.onClick.RemoveListener(wrapped);
-                handlers.Remove(handler);
-            }
-        }
+        {if(handler==null||!handlers.TryGetValue(handler,out var wrapped))return;if(button)button.onClick.RemoveListener(wrapped);handlers.Remove(handler);}
     }
-
-    /// <summary>
-    /// 基于 UGUI Slider 的进度条实现。
-    /// 注意：value 语义为 0..1，需保证 Slider 的 minValue=0、maxValue=1。
-    /// </summary>
-    public class UGUIProgressBar : IUIProgressBar
+    public class UGUIProgressBar:IUIProgressBar
     {
-        private readonly Slider slider;
-
-        public UGUIProgressBar(Slider slider)
-        {
-            this.slider = slider;
-        }
-
-        public float value
-        {
-            get { return slider != null ? slider.value : 0f; }
-            set { if (slider != null) { slider.value = value; } }
-        }
-
-        public GameObject gameObject
-        {
-            get { return slider != null ? slider.gameObject : null; }
-        }
+        readonly Slider slider;
+        public UGUIProgressBar(Slider slider){this.slider=slider;}
+        public float value{get=>slider?slider.normalizedValue:0;set{if(slider)slider.normalizedValue=value;}}
+        public GameObject gameObject=>slider?slider.gameObject:null;
     }
-
-    /// <summary>
-    /// UGUI 布局组占位实现。UGUI 无与 NGUI UIGrid.cellWidth 直接对应的属性，暂以字段承载。
-    /// </summary>
-    public class UGUILayoutGroup : IUILayoutGroup
+    public class UGUILayoutGroup:IUILayoutGroup
     {
-        private readonly GameObject target;
-        private float cellWidthValue;
-
-        public UGUILayoutGroup(GameObject target)
-        {
-            this.target = target;
-        }
-
+        readonly GameObject target;
+        readonly GridLayoutGroup grid;
+        readonly Dictionary<LayoutElement,float> original=new Dictionary<LayoutElement,float>();
+        float width;
+        public UGUILayoutGroup(GameObject target){this.target=target;grid=target.GetComponent<GridLayoutGroup>();width=grid?grid.cellSize.x:0;}
         public float cellWidth
         {
-            get { return cellWidthValue; }
-            set { cellWidthValue = value; }
+            get=>width;
+            set
+            {
+                width=value;
+                if(grid){var size=grid.cellSize;if(value>0)size.x=value;grid.cellSize=size;return;}
+                if(!target.GetComponent<HorizontalLayoutGroup>())return;
+                foreach(Transform child in target.transform)
+                {
+                    var element=child.GetComponent<LayoutElement>()??child.gameObject.AddComponent<LayoutElement>();
+                    if(!original.ContainsKey(element))original[element]=element.preferredWidth;
+                    element.preferredWidth=value>0?value:original[element];
+                }
+            }
         }
-
-        public void Reposition()
-        {
-            // TODO: 接入 HorizontalLayoutGroup / GridLayoutGroup 的强制重建布局。
-            Debug.LogWarning("[UGUI] UGUILayoutGroup.Reposition 尚未实现。");
-        }
-
-        public GameObject gameObject
-        {
-            get { return target; }
-        }
+        public void Reposition(){if(target&&target.transform is RectTransform rect)LayoutRebuilder.ForceRebuildLayoutImmediate(rect);}
+        public GameObject gameObject=>target;
     }
-
-    /// <summary>
-    /// UGUI 补间占位实现。
-    /// </summary>
-    public class UGUITweener : IUITweener
+    public class UGUITweener:IUITweener
     {
+        readonly GameObject target;readonly string clipName;
+        public UGUITweener(GameObject target=null,string clipName=null){this.target=target;this.clipName=clipName;}
         public void Play(bool forward)
         {
-            // TODO: 接入 Animator 或 DOTween 实现显示/隐藏补间。
-            Debug.LogWarning("[UGUI] UGUITweener.Play 尚未实现。");
+            if(!target)return;
+            var animation=target.GetComponent<Animation>();
+            if(animation&&!string.IsNullOrEmpty(clipName)&&animation[clipName]!=null)
+            {var state=animation[clipName];state.speed=forward?1:-1;state.time=forward?0:state.length;animation.Play(clipName);return;}
+            var fade=target.GetComponent<UGUIFade>()??target.AddComponent<UGUIFade>();fade.Play(forward,.16f);
         }
     }
 }

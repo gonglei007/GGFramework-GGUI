@@ -1,0 +1,10 @@
+{
+  "name": "com.gonglei.ggframework.ggui.ugui",
+  "version": "0.1.0-preview.3",
+  "displayName": "GGFramework GGUI Hosted UGUI",
+  "description": "GGUI instance UI ownership, modal focus and UGUI/TMP backend, exported from the canonical GGUI sources.",
+  "unity": "6000.3",
+  "dependencies": {
+    "com.unity.ugui": "2.0.0"
+  }
+}

@@ -18,13 +18,25 @@ namespace GGFramework.GGUI
         public GameObject tweenObject = null;
         public string tweenAnimationName = null;
         private IUITweener tweener = null;
+        IUIImplementation implementation;
+        UIHost host;
+        bool loaded;
+        int visibilityRevision;
+        public void BindImplementation(IUIImplementation value)
+        {
+            if(value==null)throw new ArgumentNullException(nameof(value));
+            implementation=value;host=GetComponentInParent<UIHost>(true);
+        }
+        internal void LoadOnce(){if(loaded)return;loaded=true;OnLoad();}
+        protected virtual void OnDisable(){visibilityRevision++;}
+        protected virtual void OnDestroy(){visibilityRevision++;if(host)host.Forget(this);}
 
         protected virtual void Awake()
         {
             if (tweenObject != null)
             {
                 // 通过实现层创建补间控制器，核心层不再直接依赖 NGUI 的 UIPlayTween/UITweener。
-                tweener = UISystem.Instance.Implementation.CreateTweener(tweenObject, tweenAnimationName);
+                tweener = (implementation ?? UIImplementationResolver.Resolve(this)).CreateTweener(tweenObject, tweenAnimationName);
             }
         }
 
@@ -89,9 +101,12 @@ namespace GGFramework.GGUI
         public virtual void Show(string uifx)
         {
             this.uifx = uifx;
+            int revision=++visibilityRevision;
             //this.showAnimationName = animationName;
             OnPreShow(() => {
+                if(!this || revision!=visibilityRevision)return;
                 this.gameObject.SetActive(true);
+                if(revision!=visibilityRevision || !isActiveAndEnabled)return;
                 OnShowed(() => { });
             });
         }
@@ -104,7 +119,9 @@ namespace GGFramework.GGUI
         public virtual void Hide(string hideuifx, Action onFinish = null)
         {
             this.hideuifx = hideuifx;
+            int revision=++visibilityRevision;
             OnPreHide(() => {
+                if(!this || revision!=visibilityRevision)return;
                 this.gameObject.SetActive(false);
                 if (onFinish != null)
                 {

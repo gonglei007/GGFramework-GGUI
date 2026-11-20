@@ -1,0 +1,9 @@
+{
+  "name": "GGFramework.GGUI.Runtime",
+  "rootNamespace": "GGFramework.GGUI",
+  "references": [
+    "UnityEngine.UI",
+    "Unity.TextMeshPro"
+  ],
+  "autoReferenced": true
+}

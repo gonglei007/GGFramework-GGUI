@@ -1,201 +1,75 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using TMPro;
 
 namespace GGFramework.GGUI.UGUI
 {
-    /// <summary>
-    /// 基于 UGUI 的 UI 实现层（占位骨架）。
-    /// 已实现关键控件（Text/Button/Slider）的查找与包装；补间、布局、遮罩点击等留 TODO，
-    /// 便于后续按需填充。层级创建以 Canvas + sortingOrder 给出基础实现。
-    /// </summary>
-    public class UGUIImplementation : IUIImplementation
+    /// <summary>UGUI/TMP backend. Existing canvases and EventSystems are reused unchanged.</summary>
+    public class UGUIImplementation : IUIImplementation, IDisposable
     {
-        private GameObject uiRoot;
-
-        // 记录任意 GameObject 上通过 Button 注册的点击回调包装，保证可正确移除。
-        private readonly Dictionary<GameObject, Dictionary<Action<GameObject>, UnityAction>> clickHandlers =
-            new Dictionary<GameObject, Dictionary<Action<GameObject>, UnityAction>>();
-
-        public string Name
+        sealed class ClickBinding { public GameObject Target; public Button Button; public UGUIClickRelay Relay; public Action<GameObject> Handler; public UnityAction Wrapped; }
+        readonly List<ClickBinding> clicks=new List<ClickBinding>();
+        public string Name=>"UGUI";
+        public void Init(GameObject uiRoot,GameObject animationRoot)
         {
-            get { return "UGUI"; }
+            if(!uiRoot)throw new ArgumentNullException(nameof(uiRoot));
+            if(!uiRoot.GetComponentInParent<Canvas>(true))
+            {
+                var canvas=uiRoot.GetComponent<Canvas>()??uiRoot.AddComponent<Canvas>();
+                canvas.renderMode=RenderMode.ScreenSpaceOverlay;
+                if(!uiRoot.GetComponent<GraphicRaycaster>())uiRoot.AddComponent<GraphicRaycaster>();
+            }
+            if(!UnityEngine.Object.FindFirstObjectByType<EventSystem>())
+                new GameObject("EventSystem",typeof(EventSystem),typeof(StandaloneInputModule));
         }
-
-        public void Init(GameObject uiRoot, GameObject animationRoot)
+        public GameObject CreateLayerGroup(string layerName,int depth,Transform parent)
         {
-            this.uiRoot = uiRoot;
-            // TODO: 初始化 UGUI 运行环境（EventSystem、根 Canvas、CanvasScaler 等）。
-            Debug.LogWarning("[UGUI] Init 为占位实现，EventSystem/根 Canvas 需后续完善。");
+            if(!parent)throw new ArgumentNullException(nameof(parent));
+            var go=new GameObject(layerName,typeof(RectTransform),typeof(Canvas),typeof(GraphicRaycaster));
+            var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);
+            rect.anchorMin=Vector2.zero;rect.anchorMax=Vector2.one;rect.offsetMin=rect.offsetMax=Vector2.zero;
+            var canvas=go.GetComponent<Canvas>();canvas.overrideSorting=true;canvas.sortingOrder=depth;
+            return go;
         }
-
-        public GameObject CreateLayerGroup(string layerName, int depth, Transform parent)
-        {
-            GameObject groupObject = new GameObject(layerName, typeof(Canvas), typeof(GraphicRaycaster));
-            RectTransform rect = groupObject.GetComponent<RectTransform>();
-            rect.SetParent(parent, false);
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-            Canvas canvas = groupObject.GetComponent<Canvas>();
-            canvas.overrideSorting = true;
-            canvas.sortingOrder = depth;
-            // TODO: 按需完善层叠/射线过滤等设置。
-            return groupObject;
-        }
-
-        public IUITweener CreateTweener(GameObject target, string animName)
-        {
-            // TODO: 接入 Animator 或 DOTween。
-            Debug.LogWarning("[UGUI] CreateTweener 尚未实现，返回空的补间占位对象。");
-            return new UGUITweener();
-        }
-
-        public IUIText FindText(GameObject root, string path)
-        {
-            GameObject go = FindChild(root, path);
-            if (go == null)
-            {
-                return null;
-            }
-            Text text = go.GetComponent<Text>();
-            if (text == null)
-            {
-                Debug.LogError("控件未绑定 Text！-" + path);
-                return null;
-            }
-            return new UGUIText(text);
-        }
-
-        public IUIButton FindButton(GameObject root, string path)
-        {
-            GameObject go = FindChild(root, path);
-            if (go == null)
-            {
-                return null;
-            }
-            Button button = go.GetComponent<Button>();
-            if (button == null)
-            {
-                Debug.LogError("控件未绑定 Button！-" + path);
-                return null;
-            }
-            return new UGUIButton(button);
-        }
-
-        public IUIProgressBar FindProgressBar(GameObject root, string path)
-        {
-            GameObject go = FindChild(root, path);
-            if (go == null)
-            {
-                return null;
-            }
-            Slider slider = go.GetComponent<Slider>();
-            if (slider == null)
-            {
-                Debug.LogError("控件未绑定 Slider！-" + path);
-                return null;
-            }
-            return new UGUIProgressBar(slider);
-        }
-
-        public IUILayoutGroup FindLayoutGroup(GameObject root, string path)
-        {
-            GameObject go = FindChild(root, path);
-            if (go == null)
-            {
-                return null;
-            }
-            // TODO: 依据 HorizontalLayoutGroup/GridLayoutGroup 完善布局能力。
-            return new UGUILayoutGroup(go);
-        }
-
-        public GameObject FindGameObject(GameObject root, string path)
-        {
-            return FindChild(root, path);
-        }
-
-        public void AddClickHandler(GameObject target, Action<GameObject> handler)
-        {
-            if (target == null || handler == null)
-            {
-                return;
-            }
-            Button button = target.GetComponent<Button>();
-            if (button == null)
-            {
-                // TODO: 遮罩等非 Button 对象需接入 EventTrigger 才能响应点击。
-                Debug.LogWarning("[UGUI] AddClickHandler: 目标无 Button 组件，遮罩点击需接入 EventTrigger（TODO）。-" + target.name);
-                return;
-            }
-            Dictionary<Action<GameObject>, UnityAction> map;
-            if (!clickHandlers.TryGetValue(target, out map))
-            {
-                map = new Dictionary<Action<GameObject>, UnityAction>();
-                clickHandlers[target] = map;
-            }
-            GameObject sender = target;
-            UnityAction wrapped = () => handler(sender);
-            map[handler] = wrapped;
-            button.onClick.AddListener(wrapped);
-        }
-
-        public void RemoveClickHandler(GameObject target, Action<GameObject> handler)
-        {
-            if (target == null || handler == null)
-            {
-                return;
-            }
-            Dictionary<Action<GameObject>, UnityAction> map;
-            UnityAction wrapped;
-            if (clickHandlers.TryGetValue(target, out map) && map.TryGetValue(handler, out wrapped))
-            {
-                Button button = target.GetComponent<Button>();
-                if (button != null)
-                {
-                    button.onClick.RemoveListener(wrapped);
-                }
-                map.Remove(handler);
-            }
-        }
-
+        public IUITweener CreateTweener(GameObject target,string animName)=>new UGUITweener(target,animName);
+        public GameObject FindGameObject(GameObject root,string path)
+        {if(!root)return null;return string.IsNullOrEmpty(path)?root:root.transform.Find(path)?.gameObject;}
+        public IUIText FindText(GameObject root,string path)=>WrapText(FindGameObject(root,path));
+        public IUIButton FindButton(GameObject root,string path)
+        {var button=FindGameObject(root,path)?.GetComponent<Button>();return button?new UGUIButton(button):null;}
+        public IUIProgressBar FindProgressBar(GameObject root,string path)=>WrapProgressBar(FindGameObject(root,path));
+        public IUILayoutGroup FindLayoutGroup(GameObject root,string path)
+        {var go=FindGameObject(root,path);return go&&go.GetComponent<LayoutGroup>()?new UGUILayoutGroup(go):null;}
         public IUIText WrapText(GameObject go)
         {
-            if (go == null)
-            {
-                return null;
-            }
-            Text text = go.GetComponent<Text>();
-            return text != null ? new UGUIText(text) : null;
+            if(!go)return null;
+            var tmp=go.GetComponent<TMP_Text>();if(tmp)return new UGUITMPText(tmp);
+            var text=go.GetComponent<Text>();return text?new UGUIText(text):null;
         }
-
         public IUIProgressBar WrapProgressBar(GameObject go)
+        {var slider=go?go.GetComponent<Slider>():null;return slider?new UGUIProgressBar(slider):null;}
+        public void AddClickHandler(GameObject target,Action<GameObject> handler)
         {
-            if (go == null)
-            {
-                return null;
-            }
-            Slider slider = go.GetComponent<Slider>();
-            return slider != null ? new UGUIProgressBar(slider) : null;
+            if(!target||handler==null)return;
+            clicks.RemoveAll(b=>!b.Target);
+            if(clicks.Any(b=>b.Target==target&&b.Handler==handler))return;
+            var binding=new ClickBinding{Target=target,Handler=handler,Button=target.GetComponent<Button>()};
+            if(binding.Button){binding.Wrapped=()=>handler(target);binding.Button.onClick.AddListener(binding.Wrapped);}
+            else{binding.Relay=target.GetComponent<UGUIClickRelay>()??target.AddComponent<UGUIClickRelay>();binding.Relay.Add(handler);}
+            clicks.Add(binding);
         }
-
-        private GameObject FindChild(GameObject root, string path)
+        public void RemoveClickHandler(GameObject target,Action<GameObject> handler)
         {
-            if (root == null)
-            {
-                Debug.LogWarning("root 不能为 null!");
-                return null;
-            }
-            Transform transform = root.transform.Find(path);
-            if (transform == null || transform.gameObject == null)
-            {
-                Debug.LogWarning("无法找到所需的控件!-" + path);
-                return null;
-            }
-            return transform.gameObject;
+            foreach(var binding in clicks.Where(b=>ReferenceEquals(b.Target,target)&&b.Handler==handler).ToArray())
+            {Unbind(binding);clicks.Remove(binding);}
         }
+        static void Unbind(ClickBinding binding)
+        {if(binding.Button)binding.Button.onClick.RemoveListener(binding.Wrapped);if(binding.Relay)binding.Relay.Remove(binding.Handler);}
+        public void Dispose(){foreach(var binding in clicks)Unbind(binding);clicks.Clear();}
     }
 }
